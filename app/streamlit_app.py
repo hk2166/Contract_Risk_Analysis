@@ -10,9 +10,14 @@ import numpy as np
 # Structural Path Alignment
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from nlp.clause_segmenter import segment_clauses
-from models.inference import risk_engine
-from config.settings import RISK_COLORS
+# --- DEFENSIVE STARTUP (V7 CLOUD RECOVERY) ---
+try:
+    from nlp.clause_segmenter import segment_clauses
+    from models.inference import risk_engine
+    from config.settings import RISK_COLORS, MODEL_PATH
+    IMPORT_ERROR = None
+except Exception as e:
+    IMPORT_ERROR = str(e)
 
 # --- DESIGN TOKENS (ULTRA ENTERPRISE V7) ---
 COLOR_BG = "#F8FAFC"
@@ -339,6 +344,14 @@ def get_text_from_file(file):
 # --- MAIN OPERATIONAL FLOW ---
 
 def main():
+    # 0. Global Error Handling (Cloud Diagnostics)
+    if IMPORT_ERROR:
+        st.error("Platform Foundation Error: Critical module discovery failure.")
+        st.info("The system was unable to initialize the core NLP or Inference engine. This is usually caused by absolute path mismatches on Streamlit Cloud.")
+        with st.expander("Technical Debugging Log"):
+            st.code(IMPORT_ERROR)
+        return
+
     # 1. Platform Console
     uploaded_file = render_control_panel()
     
