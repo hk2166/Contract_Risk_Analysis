@@ -291,7 +291,7 @@ def render_governance_section():
         
         st.markdown("<br>", unsafe_allow_html=True)
         st.markdown("**Technical Responsibility**")
-        st.p(
+        st.write(
             "Our benchmarking prioritizes **Recall**, ensuring that the system captures the maximum number of potential "
             "risk provisions for expert review, maintaining high sensitivity to liability patterns."
         )
