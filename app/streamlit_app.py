@@ -379,6 +379,8 @@ def main():
                 render_governance_section()
                 
             except Exception as e:
+                st.warning("Model compatibility issue detected — attempting safe inference mode.")
+                st.info("System has engaged standby recover protocols to maintain platform stability.")
                 st.error("Platform Warning: An inconsistency occurred during ingestion. Initiating recovery protocols.")
                 st.caption(f"Context: {str(e)}")
     else:

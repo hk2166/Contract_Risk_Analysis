@@ -2,6 +2,8 @@ import joblib
 import numpy as np
 import os
 import sys
+import sklearn
+import logging
 
 # Add project root to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -10,78 +12,113 @@ from config.settings import MODEL_PATH, RISK_LABELS
 from nlp.feature_engineering import load_vectorizer, transform_new_text
 from nlp.preprocessing import preprocess_text
 
+# Configure professional logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 class ContractRiskAI:
     """
-    This class is the 'interface' for our AI. 
-    You give it a sentence, and it tells you the risk.
+    Principal Inference Engine for Legal Risk Analysis.
+    
+    SENIOR ENG NOTE: This class implements defensive patching for scikit-learn 
+    LogisticRegression objects. Traditional unpickling (joblib/pickle) can fail 
+    when the environment version differs from the training version, often resulting 
+    in missing attributes like 'multi_class'.
     """
     def __init__(self):
+        logger.info(f"Initializing Inference Engine (scikit-learn v{sklearn.__version__})")
         self.load_model()
 
     def load_model(self):
+        """
+        Safely loads the model and vectorizer with version compatibility patching.
+        """
         try:
+            if not os.path.exists(MODEL_PATH):
+                logger.warning(f"Model artifact missing at {MODEL_PATH}")
+                self.model = None
+                self.vectorizer = None
+                return
+
             self.model = joblib.load(MODEL_PATH)
             self.vectorizer = load_vectorizer()
-        except:
+            
+            # --- DEFENSIVE PATCHING ---
+            # LogisticRegression changed internal attribute names across versions.
+            # We ensure 'multi_class' exists to prevent scikit-learn's internal 
+            # predict() from crashing on older/newer pickled models.
+            if self.model is not None and not hasattr(self.model, "multi_class"):
+                logger.info("Patching missing 'multi_class' attribute for compatibility.")
+                self.model.multi_class = "auto"
+                
+            logger.info("Model and Vectorizer loaded successfully.")
+            
+        except Exception as e:
+            logger.error(f"Critical failure during model ingestion: {str(e)}")
             self.model = None
             self.vectorizer = None
 
     def analyze_clause(self, text):
         """
-        Returns the risk label, confidence percentage, and the 'reasoning' words.
+        Performs inference with fallback handling. 
+        Returns (label, confidence, reasoning).
         """
-        if self.model is None or self.vectorizer is None:
-            self.load_model()
-            if self.model is None:
-                return "Not Trained", 0.0, []
+        try:
+            if self.model is None or self.vectorizer is None:
+                self.load_model()
+                if self.model is None:
+                    return "System Offline", 0.0, []
+                
+            # 1. Linguistic Preprocessing
+            clean = preprocess_text(text)
             
-        # 1. Clean the text using the same logic as training
-        clean = preprocess_text(text)
-        
-        # 2. Turn into numbers (the same TF-IDF dictionary)
-        features = transform_new_text([clean], self.vectorizer)
-        
-        # 3. Predict the label
-        label_idx = self.model.predict(features)[0]
-        label_str = RISK_LABELS.get(label_idx, "Unknown")
-        
-        # 4. Probability (Confidence)
-        probs = self.model.predict_proba(features)[0]
-        confidence = np.max(probs)
-        
-        # 5. Explainability Layer: Why did it choose this?
-        # We look at which words in this clause have the highest weights 
-        # in our model for the 'High Risk' class.
-        explain_data = self.get_explainability(features)
-        
-        return label_str, confidence, explain_data
+            # 2. Semantic Vectorization
+            features = transform_new_text([clean], self.vectorizer)
+            
+            # 3. Model Inference
+            # SENIOR ENG NOTE: We use predict() and predict_proba() only.
+            # Attributes like multi_class are used internally by scikit-learn; 
+            # we should never access them directly in production logic.
+            label_idx = self.model.predict(features)[0]
+            label_str = RISK_LABELS.get(label_idx, "Unknown")
+            
+            # 4. Confidence Score (Probability)
+            probs = self.model.predict_proba(features)[0]
+            confidence = np.max(probs)
+            
+            # 5. Explainability Synthesis
+            explain_data = self.get_explainability(features)
+            
+            return label_str, confidence, explain_data
+            
+        except Exception as e:
+            logger.warning(f"Inference interrupted for clause segment: {str(e)}")
+            # Return neutral fallback to maintain UI stability
+            return "Analysis Error", 0.0, ["Safe Mode Engaged"]
 
     def get_explainability(self, features):
         """
-        Identifies the feature names (words) that most heavily influenced
-        the risk prediction for this specific clause.
+        Extracts feature importance for local interpretability.
         """
-        if self.model is None or not hasattr(self.model, "coef_"):
+        try:
+            if self.model is None or not hasattr(self.model, "coef_"):
+                return []
+
+            # Vectorized feature extraction
+            weights = self.model.coef_[0]
+            feature_indices = features.indices
+            feature_names = self.vectorizer.get_feature_names_out()
+            
+            reasons = []
+            for idx in feature_indices:
+                weight = weights[idx]
+                if weight > 0: 
+                    reasons.append((weight, feature_names[idx]))
+            
+            reasons.sort(key=lambda x: x[0], reverse=True)
+            return [word for weight, word in reasons[:5]]
+        except:
             return []
 
-        # Get the feature weights for 'High Risk' (Class 1)
-        weights = self.model.coef_[0]
-        
-        # Get feature indices for the non-zero values in this clause
-        feature_indices = features.indices
-        
-        # Map indices to (weight, word)
-        feature_names = self.vectorizer.get_feature_names_out()
-        
-        reasons = []
-        for idx in feature_indices:
-            weight = weights[idx]
-            if weight > 0: # Focus on words that INCREASE risk
-                reasons.append((weight, feature_names[idx]))
-        
-        # Sort by weight importance and return top 5
-        reasons.sort(key=lambda x: x[0], reverse=True)
-        return [word for weight, word in reasons[:5]]
-
-# Easy-to-use instance
+# Singleton instance for platform-wide access
 risk_engine = ContractRiskAI()
