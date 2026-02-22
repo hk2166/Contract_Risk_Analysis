@@ -1,5 +1,7 @@
 # Intelligent Contract Risk Analysis and Agentic Legal Assistance System
 
+[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://share.streamlit.io/deploy?repository=suvendukungfu/Intelligent-Contract-Risk-Analysis-and-Agentic-Legal-Assistance-System&branch=main&main_module_path=app/streamlit_app.py)
+
 > **Milestone 1: Automated Clause Classification and Risk Assessment Engine**
 
 ---
