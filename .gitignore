@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+venv/
+ENV/
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Project artifacts (keeping small ones, ignoring local models if any)
+# artifacts/classifier.pkl
+# artifacts/vectorizer.pkl
+# artifacts/*.png
