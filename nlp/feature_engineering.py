@@ -11,20 +11,20 @@ def create_tfidf_features(corpus, save=True):
     - 'IDF' (Inverse Document Frequency): How unique a word is across all documents.
     
     This helps the AI focus on 'important' words like 'Indemnify' rather than 'The'.
+    
+    Note: corpus is expected to already be preprocessed (lowercased, lemmatized, etc.)
     """
     # ngram_range=(1,2) means we look at single words ("risk") 
     # AND pairs of words ("high risk").
     vectorizer = TfidfVectorizer(
         ngram_range=(1, 2),
-        max_features=5000 # We only take the top 5000 most 'meaningful' words.
+        max_features=5000  # We only take the top 5000 most 'meaningful' words.
     )
-    
-    # First, we 'clean' all the text using our preprocessing logic.
-    processed_corpus = [preprocess_text(text) for text in corpus]
     
     # The 'fit' part creates the dictionary of words.
     # The 'transform' part turns the text into numbers (a matrix).
-    X = vectorizer.fit_transform(processed_corpus)
+    # corpus is already preprocessed by batch_preprocess_texts() in train.py.
+    X = vectorizer.fit_transform(corpus)
     
     # We save our vectorizer 'dictionary' so we can use it again later.
     if save:

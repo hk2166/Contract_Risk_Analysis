@@ -8,7 +8,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.metrics import precision_recall_fscore_support, confusion_matrix
-from nlp.preprocessing import preprocess_text
+from nlp.preprocessing import preprocess_text, batch_preprocess_texts
 from nlp.feature_engineering import create_tfidf_features
 from config.settings import DATASET_PATH, MODEL_PATH, ARTIFACTS_DIR
 
@@ -29,8 +29,8 @@ def train_system():
     # ML Logic: Drop missing values early to prevent arithmetic errors later.
     df = df.dropna(subset=['clause_text', 'clause_status'])
     
-    print(f"AI is cleaning {len(df)} clauses using the spaCy pipeline...")
-    df['clean_text'] = df['clause_text'].apply(preprocess_text)
+    print(f"AI is cleaning {len(df)} clauses using the spaCy pipeline (batch mode)...")
+    df['clean_text'] = batch_preprocess_texts(df['clause_text'])
     
     # 🔢 Phase 2: Feature Engineering (TF-IDF)
     print("--- 🔢 Phase 2: Turning Words into Numbers ---")
